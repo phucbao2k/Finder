@@ -156,13 +156,14 @@ app.get("/api/config", (_req, res) => {
   res.json({
     providerConfigured: Boolean(API_KEY),
     provider: "SerpAPI",
-    version: "2.1.0"
+    version: "3.0.0"
   });
 });
 
 app.post("/api/search", async (req, res) => {
   const query = clean(req.body?.query, 500);
   const mode = req.body?.mode === "images" ? "images" : "web";
+  const sort = req.body?.sort === "newest" && mode === "web" ? "newest" : "relevance";
 
   if (!query) {
     return res.status(400).json({
@@ -176,7 +177,7 @@ app.post("/api/search", async (req, res) => {
     });
   }
 
-  const cacheKey = `${mode}:${query.toLocaleLowerCase()}`;
+  const cacheKey = `${mode}:${sort}:${query.toLocaleLowerCase()}`;
   const cached = getCache(cacheKey);
 
   if (cached) {
@@ -202,7 +203,8 @@ app.post("/api/search", async (req, res) => {
       google_domain: "google.co.jp",
       gl: "jp",
       hl: "ja",
-      safe: "off"
+      safe: "off",
+      ...(sort === "newest" ? { tbs: "sbd:1" } : {})
     });
 
     let result;
@@ -217,6 +219,7 @@ app.post("/api/search", async (req, res) => {
       result = {
         query,
         mode,
+        sort,
         results: normalizeWebResults(data),
         knowledgeGraph: data.knowledge_graph
           ? {
