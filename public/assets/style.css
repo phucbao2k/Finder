@@ -80,3 +80,5 @@ button.primary{background:linear-gradient(110deg,#9caaff,#70e3ce)}
 .lightbox a{color:#aebdff;font-size:12px}
 .lightbox-close{position:absolute;right:17px;top:12px;background:#25334b;color:white;border:1px solid #53627a;font-size:28px;line-height:1;padding:4px 12px}
 @media(max-width:640px){.shell{width:min(100% - 20px,980px);margin:18px auto 35px}.panel{padding:16px;border-radius:14px}.input-row,.custom-tag-row{flex-direction:column}.grid2{grid-template-columns:1fr}.input-row button,.custom-tag-row button{width:100%}.image-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.image-open img{height:170px}.tag-head{align-items:flex-start}.result-heading{align-items:flex-start;flex-direction:column}}
+
+.field-hint{font-size:11px;color:var(--muted);margin:6px 1px 0}
