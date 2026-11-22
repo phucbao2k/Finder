@@ -7,6 +7,7 @@
     apiBase: (localStorage.getItem("jde_api_base") || DEFAULT_API_BASE).replace(/\/+$/, ""),
     lastPrompt: "",
     searchBusy: false,
+    relatedBusy: false,
     tags: [],
     selected: new Set(),
     saved: loadSaved()
@@ -177,10 +178,10 @@
       throw error;
     } finally { clearTimeout(timeout); }
   }
-  async function apiSearch(query, mode) {
+  async function apiSearch(query, mode, sort = "relevance") {
     return requestJson(apiUrl("/api/search"), {
       method:"POST", headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({query, mode})
+      body:JSON.stringify({query, mode, sort})
     });
   }
 
@@ -217,6 +218,8 @@
       meta.textContent = [result.source, result.date, result.displayedLink].filter(Boolean).join(" · ");
       const actions = document.createElement("div"); actions.className = "card-actions";
       const link = document.createElement("a"); link.href = result.link || "#"; link.target = "_blank"; link.rel = "noopener noreferrer"; link.textContent = "Mở nguồn ↗";
+      const related = document.createElement("button"); related.className = "save-candidate"; related.type = "button"; related.textContent = "⌕ Tìm phim tương tự";
+      related.addEventListener("click", () => findRelated(result));
       const save = document.createElement("button"); save.className = "save-candidate"; save.type = "button";
       const updateSaveLabel = () => { save.textContent = isSaved(result.link) ? "✓ Đã lưu" : "+ Lưu ứng viên"; save.disabled = isSaved(result.link); };
       updateSaveLabel();
@@ -226,7 +229,59 @@
         persistSaved(); renderSaved(); updateSaveLabel();
         setStatus("Đã lưu ứng viên vào bộ nhớ trình duyệt.");
       });
-      actions.append(link, save); card.append(title, desc, meta, actions); box.append(card);
+      actions.append(link, related, save); card.append(title, desc, meta, actions); box.append(card);
+    });
+  }
+
+  async function findRelated(result) {
+    if (state.relatedBusy) return;
+    const title = String(result.title || "").trim();
+    if (!title) return;
+    const codeMatch = title.match(/\b[A-Z]{2,8}[-_ ]?\d{2,6}\b/i);
+    const code = codeMatch ? codeMatch[0] : "";
+    const actress = $("actress").value.trim();
+    const maker = $("maker").value.trim();
+    const queryParts = [
+      `"${title}"`, code,
+      actress ? `"${actress}"` : "",
+      maker ? `"${maker}"` : "",
+      "JAV 作品 関連作品 類似作品 女優"
+    ].filter(Boolean);
+    const query = [...new Set(queryParts)].join(" ").slice(0, 480);
+    $("relatedQuery").replaceChildren(makeLink("Google · mở rộng từ phim đã chọn", query));
+    $("relatedResults").textContent = "Đang tìm các kết quả liên quan...";
+    switchTab("related");
+    state.relatedBusy = true;
+    setStatus("Đang mở rộng tìm kiếm từ phim bạn vừa chọn...");
+    try {
+      const data = await apiSearch(query, "web", "relevance");
+      const relatedResults = (data.results || []).filter(item => item.link !== result.link);
+      renderResultsInto($("relatedResults"), relatedResults, true);
+      setStatus(`Đã tìm được ${relatedResults.length} kết quả mở rộng. Hãy đối chiếu metadata và nguồn; mức liên quan chưa được xác minh tự động.`);
+    } catch (error) {
+      $("relatedResults").textContent = "Không thể tìm phim liên quan: " + error.message;
+      setStatus("Tìm phim liên quan thất bại: " + error.message, true);
+    } finally { state.relatedBusy = false; }
+  }
+
+  function renderResultsInto(box, results, compact = false) {
+    box.replaceChildren();
+    if (!results.length) { box.textContent = "Không có kết quả phù hợp. Thử mã phim, tên diễn viên hoặc tag khác."; return; }
+    results.forEach(result => {
+      const card = document.createElement("article"); card.className = "result-card";
+      const title = document.createElement("h3"); title.textContent = result.title || "Không có tiêu đề";
+      const desc = document.createElement("p"); desc.textContent = result.snippet || "Nguồn không cung cấp mô tả.";
+      const meta = document.createElement("div"); meta.className = "result-meta";
+      meta.textContent = [result.source, result.date, result.displayedLink].filter(Boolean).join(" · ");
+      const actions = document.createElement("div"); actions.className = "card-actions";
+      const link = document.createElement("a"); link.href = result.link || "#"; link.target = "_blank"; link.rel = "noopener noreferrer"; link.textContent = "Mở nguồn ↗";
+      const related = document.createElement("button"); related.className = "save-candidate"; related.type = "button"; related.textContent = "⌕ Tìm sâu hơn";
+      related.addEventListener("click", () => findRelated(result));
+      const save = document.createElement("button"); save.className = "save-candidate"; save.type = "button";
+      const update = () => { save.textContent = isSaved(result.link) ? "✓ Đã lưu" : "+ Lưu ứng viên"; save.disabled = isSaved(result.link); };
+      update();
+      save.addEventListener("click", () => { if (!result.link || isSaved(result.link)) return; state.saved.unshift(makeCandidate(result)); persistSaved(); renderSaved(); update(); setStatus("Đã lưu ứng viên vào bộ nhớ trình duyệt."); });
+      actions.append(link, related, save); card.append(title, desc, meta, actions); box.append(card);
     });
   }
 
@@ -309,11 +364,19 @@
     const maker = $("maker").value.trim();
     const era = $("era").value;
     const priority = $("priority").value;
+    const sort = $("sortMode").value;
     if (!brief && !tags.length && !actress && !maker) {
       setStatus("Nhập ý tưởng, chọn tag hoặc điền diễn viên / hãng trước khi tìm.", true); return;
     }
     const japaneseTags = tags.filter(t => /[\u3000-\u9FFF\uF900-\uFAFF]/.test(t));
-    const queryParts = [...new Set([...japaneseTags, ...tags, actress, maker, brief, era])].filter(Boolean);
+    const priorityTerms = {
+      "Độ khớp cốt truyện và mood": "ストーリー 内容 シチュエーション",
+      "Mã phim và metadata chính xác": "品番 作品名 メーカー 発売日",
+      "Diễn viên": "女優 出演者 作品",
+      "Hãng và series": "メーカー シリーズ 品番",
+      "Chủ đề / tag nội dung": "ジャンル タグ 内容"
+    };
+    const queryParts = [...new Set([...japaneseTags, ...tags, actress, maker, brief, era, priorityTerms[priority] || ""])].filter(Boolean);
     const query = queryParts.join(" ").slice(0, 420);
     const webQuery = `${query} JAV 品番 女優 メーカー`;
     const imageQuery = `${query} JAV DVD ジャケット 場面`;
@@ -328,11 +391,12 @@
     $("images").textContent = "Đang tìm ảnh...";
     state.searchBusy = true; $("search").disabled = true;
     setStatus("Đang tìm metadata và hình ảnh song song. Lần đầu có thể chậm nếu Render vừa khởi động.");
-    const webTask = apiSearch(webQuery,"web").then(data => { renderResults(data.results || []); return data; }).catch(error => { $("results").textContent = "Lỗi metadata: " + error.message; throw error; });
+    const webTask = apiSearch(webQuery,"web",sort).then(data => { renderResults(data.results || []); return data; }).catch(error => { $("results").textContent = "Lỗi metadata: " + error.message; throw error; });
     const imageTask = apiSearch(imageQuery,"images").then(data => { renderImages(data.images || []); return data; }).catch(error => { $("images").textContent = "Lỗi hình ảnh: " + error.message; throw error; });
     const [w,i] = await Promise.allSettled([webTask,imageTask]);
     if (w.status === "fulfilled" && i.status === "fulfilled") {
-      setStatus(`Hoàn tất: ${(w.value.results||[]).length} kết quả web · ${(i.value.images||[]).length} ảnh. Hãy kiểm tra mã phim tại nguồn.`);
+      const sortLabel = sort === "newest" ? "Newest · Google sắp xếp theo ngày" : "Best Match · thứ tự liên quan của Google";
+      setStatus(`Hoàn tất: ${(w.value.results||[]).length} kết quả web · ${(i.value.images||[]).length} ảnh. ${sortLabel}. Ngày phát hành cần xác minh tại nguồn.`);
     } else if (w.status === "fulfilled") setStatus("Đã có metadata nhưng tìm ảnh lỗi: " + i.reason.message, true);
     else if (i.status === "fulfilled") setStatus("Đã có ảnh nhưng tìm metadata lỗi: " + w.reason.message, true);
     else setStatus("Tìm kiếm thất bại. Metadata: " + w.reason.message + " | Ảnh: " + i.reason.message, true);
@@ -344,6 +408,7 @@
     document.querySelectorAll(".tab").forEach(btn => btn.classList.toggle("active", btn.dataset.tab === name));
     $("metadataView").classList.toggle("hidden", name !== "metadata");
     $("imagesView").classList.toggle("hidden", name !== "images");
+    $("relatedView").classList.toggle("hidden", name !== "related");
     $("savedView").classList.toggle("hidden", name !== "saved");
     if (name === "saved") renderSaved();
   }
@@ -361,7 +426,7 @@
     $("era").selectedIndex = 0; $("priority").selectedIndex = 0;
     state.tags = []; state.selected.clear(); state.lastPrompt = "";
     $("tagWorkspace").classList.add("hidden"); $("resultsPanel").classList.add("hidden");
-    $("results").replaceChildren(); $("images").replaceChildren(); $("queryLinks").replaceChildren();
+    $("results").replaceChildren(); $("images").replaceChildren(); $("relatedResults").replaceChildren(); $("relatedQuery").replaceChildren(); $("queryLinks").replaceChildren();
     setStatus("Đã làm mới biểu mẫu.");
   }
 
