@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#111827">
+<title>JAV Finder – Search Builder</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1020;--panel:#151d31;--line:#29344c;--txt:#eef2ff;--muted:#aab6d0;--accent:#8b9cff;--good:#72d6ad}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:760px;margin:auto;padding:20px 15px 48px}
+h1{font-size:27px;margin:8px 0 4px}.sub{color:var(--muted);margin:0 0 18px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;margin:14px 0}
+label{display:block;font-weight:650;margin:12px 0 6px}
+input,textarea,select{width:100%;background:#0d1528;border:1px solid var(--line);border-radius:10px;color:var(--txt);padding:12px;font:inherit}
+textarea{min-height:88px;resize:vertical}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:9px 0}
+.chip{border:1px solid #455273;border-radius:999px;padding:8px 11px;background:#101a30;color:var(--txt);font-size:14px}
+.chip.on{background:#303e78;border-color:var(--accent)}
+button,.linkbtn{display:inline-block;border:0;border-radius:10px;padding:12px 15px;background:var(--accent);color:#081020;font-weight:750;text-decoration:none;font-size:15px}
+button.secondary{background:#27334c;color:var(--txt);border:1px solid var(--line)}
+.actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:14px}
+.result{border-top:1px solid var(--line);padding:13px 0}.result:first-child{border-top:0}
+.result a{color:#c3ceff;text-decoration:none;font-weight:650}.jp{color:var(--good);font-size:14px}
+small,.muted{color:var(--muted)}.note{font-size:13px;color:var(--muted)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+@media(max-width:520px){.grid{grid-template-columns:1fr}h1{font-size:24px}}
+</style>
+</head>
+<body><main>
+<h1>🔎 JAV Finder</h1>
+<p class="sub">Bộ tạo truy vấn tiếng Nhật và tra cứu metadata – phiên bản miễn phí, chạy ngay trên trình duyệt.</p>
+
+<section class="panel">
+<label for="desc">Mô tả phim bạn muốn tìm</label>
+<textarea id="desc" placeholder="Ví dụ: phụ nữ trưởng thành chủ động quyến rũ, có yếu tố ngoại tình, ưu tiên deep throat nhưng không quá hardcore"></textarea>
+<label>Chọn tag cần tìm</label>
+<div class="chips" id="chips">
+<button class="chip on" data-jp="痴女" type="button">痴女 · nữ chủ động</button>
+<button class="chip on" data-jp="誘惑" type="button">誘惑 · dụ dỗ</button>
+<button class="chip" data-jp="小悪魔" type="button">小悪魔 · tinh quái</button>
+<button class="chip" data-jp="人妻" type="button">人妻 · người vợ</button>
+<button class="chip" data-jp="寝取られ" type="button">寝取られ · NTR</button>
+<button class="chip on" data-jp="喉奥" type="button">喉奥 · throat</button>
+<button class="chip" data-jp="喉奥フェラ" type="button">喉奥フェラ</button>
+<button class="chip" data-jp="ディープスロート" type="button">ディープスロート</button>
+<button class="chip" data-jp="フェラ" type="button">フェラ · fellatio</button>
+<button class="chip" data-jp="肉食系女子" type="button">肉食系女子 · chủ động</button>
+</div>
+<div class="grid">
+<div><label for="code">Mã phim (nếu có)</label><input id="code" placeholder="Ví dụ: ABC-123"></div>
+<div><label for="actress">Diễn viên (nếu có)</label><input id="actress" placeholder="Tên Nhật hoặc Latin"></div>
+</div>
+<div class="actions">
+<button id="make">Tạo truy vấn tìm kiếm</button>
+<button class="secondary" id="clear">Xóa</button>
+</div>
+<p class="note">Công cụ chỉ tạo liên kết tìm kiếm metadata công khai; không tải video, không xác nhận nội dung nếu chưa có nguồn mô tả đáng tin cậy.</p>
+</section>
+
+<section class="panel" id="output" hidden>
+<h2 style="margin-top:0">Truy vấn được tạo</h2>
+<div id="queries"></div>
+</section>
+
+<section class="panel">
+<h2 style="margin-top:0">📚 Từ điển nhanh</h2>
+<div class="result"><span class="jp">痴女 (chijo)</span><br><small>Nhân vật nữ chủ động, táo bạo; không tự động đồng nghĩa với NTR.</small></div>
+<div class="result"><span class="jp">誘惑 (yūwaku)</span><br><small>Cám dỗ, quyến rũ.</small></div>
+<div class="result"><span class="jp">寝取られ (netorare)</span><br><small>NTR – bị người khác chiếm mất bạn tình.</small></div>
+<div class="result"><span class="jp">喉奥 (nodo oku)</span><br><small>Vùng sâu cổ họng; từ khóa rộng, cần đọc mô tả để xác nhận.</small></div>
+<div class="result"><span class="jp">ディープスロート</span><br><small>Deep throat – từ khóa trực tiếp.</small></div>
+<div class="result"><span class="jp">イラマチオ</span><br><small>Iramatio – có thể kéo kết quả sang nội dung mạnh bạo hơn.</small></div>
+</section>
+<footer class="note">JAV Finder không lưu lịch sử tìm kiếm và không gửi mô tả của bạn tới máy chủ riêng. Liên kết ngoài sẽ mở công cụ tìm kiếm tương ứng.</footer>
+</main>
+<script>
+const selected=()=>[...document.querySelectorAll('.chip.on')].map(x=>x.dataset.jp);
+document.querySelectorAll('.chip').forEach(b=>b.addEventListener('click',()=>b.classList.toggle('on')));
+const enc=s=>encodeURIComponent(s.trim());
+function addQuery(container,label,q,url){const d=document.createElement('div');d.className='result';const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';a.textContent=label+' ↗';const p=document.createElement('div');p.className='jp';p.textContent=q;d.append(a,p);container.append(d)}
+document.getElementById('make').onclick=()=>{
+ const tags=selected(), desc=document.getElementById('desc').value.trim(), code=document.getElementById('code').value.trim(), actress=document.getElementById('actress').value.trim();
+ const out=document.getElementById('output'), box=document.getElementById('queries');box.replaceChildren();out.hidden=false;
+ let base=[...tags];if(desc)base.push(desc);if(actress)base.push(actress);
+ const lex=[['deep throat','ディープスロート'],['deepthroat','ディープスロート'],['ngoại tình','浮気'],['người vợ','人妻'],['vợ','人妻'],['quyến rũ','誘惑'],['dụ dỗ','誘惑'],['chủ động','痴女'],['lẳng lơ','淫乱'],['ntr','寝取られ'],['cổ họng','喉奥'],['fellatio','フェラ'],['chị trưởng thành','熟女']];
+ const translated=lex.reduce((v,[vi,jp])=>v.replace(new RegExp(vi,'gi'),jp),desc);
+ const q1=[...tags,translated,actress].filter(Boolean).join(' '), q2=[...tags,'作品','女優'].join(' '), q3=[...tags,'site:javlibrary.com'].join(' ');
+ if(code){addQuery(box,'Tra mã phim chính xác',code,'https://www.google.com/search?q='+enc('"'+code+'" JAV'));}
+ if(actress){addQuery(box,'Tìm diễn viên + tag',q1,'https://www.google.com/search?q='+enc(q1+' JAV'));}
+ addQuery(box,'Tìm rộng trên web',q1,'https://www.google.com/search?q='+enc(q1+' JAV 作品'));
+ addQuery(box,'Tìm bằng Bing',q1,'https://www.bing.com/search?q='+enc(q1+' JAV'));
+ addQuery(box,'Tìm catalog metadata',q2,'https://www.google.com/search?q='+enc(q2+' JAV database'));
+ addQuery(box,'Tìm mô tả có tag cổ họng',q3,'https://www.google.com/search?q='+enc(q3));
+ addQuery(box,'Tra catalog FANZA/DMM',q1,'https://www.google.com/search?q='+enc('site: video.dmm.co.jp '+q1));
+};
+document.getElementById('clear').onclick=()=>{document.getElementById('desc').value='';document.getElementById('code').value='';document.getElementById('actress').value='';document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));document.getElementById('output').hidden=true};
+</script>
+</body></html>
