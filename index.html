@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#111827">
+<title>JAV Discovery Engine</title>
+<style>
+:root{color-scheme:dark;--bg:#0a0f1d;--panel:#131c2e;--panel2:#19253b;--line:#2a3852;--txt:#edf2ff;--muted:#a6b3cc;--accent:#9aaeff;--mint:#7fe0bd}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(ellipse at 80% 0%,#202d51 0,#0a0f1d 55%);color:var(--txt);font:15px/1.55 system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:920px;margin:auto;padding:22px 15px 55px}
+header{padding:12px 0 20px}
+h1{font-size:29px;line-height:1.15;margin:8px 0}
+h2{font-size:19px;margin:0 0 12px}
+p{margin:5px 0;color:var(--muted)}
+.eyebrow{font-size:11px;letter-spacing:2px;color:var(--mint);font-weight:800}
+.panel{background:rgba(19,28,46,.94);border:1px solid var(--line);border-radius:17px;padding:16px;margin:13px 0;box-shadow:0 10px 30px #0002}
+textarea,input,select{width:100%;background:#0b1426;border:1px solid var(--line);border-radius:11px;color:var(--txt);padding:11px 12px;font:inherit}
+textarea{min-height:105px;resize:vertical}
+label{display:block;font-weight:700;margin:12px 0 6px}
+button,.btn{border:0;border-radius:11px;padding:11px 15px;background:var(--accent);color:#10182b;font-weight:800;font-size:14px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:7px;cursor:pointer}
+button.alt{background:#263550;color:var(--txt);border:1px solid #3b4a68}
+button.ghost{background:transparent;border:1px solid var(--line);color:var(--txt)}
+button.sm{padding:7px 11px;font-size:12px;border-radius:9px}
+.row{display:flex;gap:9px;flex-wrap:wrap}.row>*{flex:1}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{background:#111c31;border:1px solid #3a4967;color:#dce5ff;border-radius:99px;padding:8px 12px;font-size:13px;cursor:pointer}
+.chip.active{background:#34477b;border-color:#9aaeff;color:white}
+.small{font-size:12px;color:var(--muted)}
+.tag{display:inline-block;background:#243653;border-radius:7px;padding:3px 7px;margin:2px;font-size:12px;color:#d8e3ff}
+.result{padding:12px 0;border-top:1px solid var(--line)}.result:first-child{border:0}
+.result a{color:#c6d2ff;font-weight:750;text-decoration:none}
+.jp{color:var(--mint);font-size:13px;word-break:break-word}
+.step{display:flex;gap:10px;align-items:flex-start;margin:10px 0}
+.num{width:25px;height:25px;flex:none;border-radius:50%;background:#34477b;display:grid;place-items:center;font-weight:800}
+.warning{border-left:3px solid #d5ad5b;padding:9px 11px;background:#302817;border-radius:7px;color:#ead8ad;font-size:13px}
+.media-grid{display:grid;grid-template-columns:150px 1fr;gap:12px;margin-top:10px;background:#0e1729;border:1px solid var(--line);border-radius:14px;padding:12px}
+.highlights-strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-top:8px}
+.shot-box{position:relative;background:#09101e;border:1px solid #263552;border-radius:10px;overflow:hidden;min-height:92px;display:flex;align-items:center;justify-content:center}
+.shot-box.portrait{min-height:190px}
+.shot-box img{width:100%;height:100%;object-fit:cover;display:block}
+.shot-label{position:absolute;left:6px;bottom:6px;background:rgba(10,15,29,.82);border:1px solid rgba(154,174,255,.35);color:#e6eeff;font-size:11px;padding:2px 6px;border-radius:6px;pointer-events:none}
+.img-fallback{padding:8px;text-align:center;font-size:11px;color:var(--muted)}
+.card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap}
+.card-actions{display:flex;gap:6px;flex-wrap:wrap}
+@media(max-width:640px){
+  h1{font-size:25px}
+  .row{flex-direction:column}
+  .panel{padding:14px}
+  .media-grid{grid-template-columns:1fr}
+  .shot-box.portrait{min-height:150px}
+}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div class="eyebrow">PERSONAL METADATA RESEARCH · VISUAL EDITION</div>
+  <h1>🎬 JAV Discovery Engine</h1>
+  <p>Mô tả mood. Khám phá chủ đề. Truy mã phim &amp; đối chiếu hình ảnh trực quan.</p>
+</header>
+<section class="panel">
+  <h2>01 · Mood hiện tại của bạn</h2>
+  <p>Chọn vài hướng gợi ý hoặc tự mô tả. Mỗi lần tìm là một bộ tiêu chí độc lập.</p>
+  <div class="chips" id="moods">
+    <button class="chip" type="button">Tâm lý / cốt truyện</button>
+    <button class="chip" type="button">Quyến rũ / dụ dỗ</button>
+    <button class="chip" type="button">NTR / phản bội</button>
+    <button class="chip" type="button">Hài hước / đời thường</button>
+    <button class="chip" type="button">Trưởng thành / ngoại tình</button>
+    <button class="chip" type="button">Diễn xuất tự nhiên</button>
+    <button class="chip" type="button">Một diễn viên cụ thể</button>
+    <button class="chip" type="button">Một hãng / series</button>
+    <button class="chip" type="button">Kỹ thuật / chủ đề cụ thể</button>
+    <button class="chip" type="button">Khám phá ngẫu nhiên</button>
+  </div>
+  <label for="brief">Mô tả bằng ngôn ngữ tự nhiên</label>
+  <textarea id="brief" placeholder="Ví dụ: Hôm nay muốn phim có câu chuyện cuốn hút, nữ diễn viên trưởng thành, chủ động, diễn xuất tự nhiên. Không cần quá nặng về hành vi..."></textarea>
+  <div class="row">
+    <div><label for="actress">Diễn viên (không bắt buộc)</label><input id="actress" placeholder="Tên diễn viên / tên Nhật"></div>
+    <div><label for="maker">Hãng hoặc mã phim (không bắt buộc)</label><input id="maker" placeholder="Hãng, series hoặc mã phim"></div>
+  </div>
+  <label for="era">Thời kỳ phát hành</label>
+  <select id="era">
+    <option value="">Không giới hạn</option><option>2020–nay</option><option>2015–2019</option><option>2010–2014</option><option>2000–2009</option><option>Trước năm 2000</option>
+  </select>
+  <label for="priority">Ưu tiên kết quả</label>
+  <select id="priority">
+    <option>Độ khớp cốt truyện và mood</option><option>Mã phim và metadata chính xác</option><option>Diễn viên</option><option>Hãng và series</option><option>Chủ đề / tag nội dung</option><option>Khám phá nhiều lựa chọn khác nhau</option>
+  </select>
+  <div class="row" style="margin-top:14px"><button id="generate" type="button">✨ Phân tích mood &amp; tạo truy vấn</button><button class="alt" id="reset" type="button">Đổi mood / làm mới</button></div>
+</section>
+<section class="panel" id="out" hidden>
+  <h2>02 · Bản phân tích tìm kiếm</h2><div id="summary"></div>
+  <h2 style="margin-top:18px">Từ khóa Nhật đề xuất</h2><div id="terms"></div>
+  <h2 style="margin-top:18px">Truy vấn đa hướng</h2><div id="queries"></div>
+  <div class="row" style="margin-top:14px"><button id="copyPrompt" type="button">Copy prompt nghiên cứu cho ChatGPT</button><button class="alt" id="copyTerms" type="button">Copy từ khóa Nhật</button></div>
+</section>
+<section class="panel">
+  <h2>03 · Bảng ghi nhận &amp; xem trước hình ảnh</h2>
+  <p>Dán link ảnh diễn viên, ảnh bìa và các khung cảnh highlight (mỗi link cách nhau bằng dấu phẩy hoặc xuống dòng) để so sánh trực quan trước khi chốt phim.</p>
+  <label for="candidate">Mã phim / tiêu đề ứng viên</label><input id="candidate" placeholder="Ví dụ: ABC-123 — Tên phim">
+  <div class="row">
+    <div><label for="actressImg">URL ảnh diễn viên (không bắt buộc)</label><input id="actressImg" placeholder="https://.../actress.jpg"></div>
+    <div><label for="coverImg">URL ảnh bìa phim (không bắt buộc)</label><input id="coverImg" placeholder="https://.../cover.jpg"></div>
+  </div>
+  <label for="highlightImgs">URL các khung cảnh highlight (cách nhau bởi dấu phẩy hoặc xuống dòng)</label><textarea id="highlightImgs" style="min-height:72px" placeholder="https://.../scene1.jpg&#10;https://.../scene2.jpg, https://.../scene3.jpg"></textarea>
+  <label for="source">Nguồn tra cứu / ghi chú</label><input id="source" placeholder="URL trang catalog, trang hãng hoặc ghi chú mood">
+  <div class="row" style="margin-top:12px"><button id="save" type="button">＋ Lưu ứng viên &amp; hiện ảnh</button><button class="alt" id="export" type="button">Xuất CSV</button></div>
+  <div id="saved" style="margin-top:14px"></div>
+  <p class="small">Danh sách giữ trong bộ nhớ phiên trình duyệt; tải CSV để lưu lâu dài. Nếu ảnh không hiển thị, có thể do nguồn chặn hotlink/CORS hoặc URL sai.</p>
+</section>
+<section class="panel">
+  <h2>04 · Quy tắc kiểm chứng</h2>
+  <div class="step"><span class="num">1</span><div><b>Mã phim</b><p>Phải đối chiếu mã với tiêu đề trên catalog hoặc nhà phát hành.</p></div></div>
+  <div class="step"><span class="num">2</span><div><b>Diễn viên và hãng</b><p>Đối chiếu ảnh và tên riêng, tránh nhầm phim cùng diễn viên hoặc mã gần giống.</p></div></div>
+  <div class="step"><span class="num">3</span><div><b>Khung cảnh &amp; đặc điểm khớp</b><p>Đối chiếu bối cảnh/highlight với mood hiện tại; phân biệt mô tả chính thức và suy luận.</p></div></div>
+  <div class="step"><span class="num">4</span><div><b>Xếp hạng</b><p>Ưu tiên bằng chứng và mức khớp yêu cầu hiện tại; không mặc định gu cũ.</p></div></div>
+  <div class="warning">Phiên bản này là công cụ hỗ trợ tra cứu, đối chiếu hình ảnh và quản lý ứng viên chạy cục bộ trên trình duyệt, không tự thu thập dữ liệu hoặc tải nội dung vi phạm bản quyền.</div>
+</section>
+<footer class="small">JAV Discovery Engine · v1.1 Visual · Chạy cục bộ trên trình duyệt, không gửi dữ liệu tới máy chủ riêng.</footer>
+</main>
+<script>
+const moodBtns = [...document.querySelectorAll('#moods .chip')];
+moodBtns.forEach(b => b.onclick = () => b.classList.toggle('active'));
+const enc = s => encodeURIComponent(s);
+const selected = () => moodBtns.filter(b => b.classList.contains('active')).map(b => b.textContent);
+let promptText = '';
+function linkRow(parent, label, q, url) {
+  const d = document.createElement('div'); d.className = 'result';
+  const a = document.createElement('a'); a.href = url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = label + ' ↗';
+  const p = document.createElement('div'); p.className = 'jp'; p.textContent = q; d.append(a, p); parent.append(d);
+}
+document.getElementById('generate').onclick = () => {
+  const brief = document.getElementById('brief').value.trim(), moods = selected();
+  const actress = document.getElementById('actress').value.trim(), maker = document.getElementById('maker').value.trim();
+  const era = document.getElementById('era').value, priority = document.getElementById('priority').value;
+  let terms = []; const s = brief.toLowerCase();
+  const map = [
+    [/ntr|phản bội|ngoại tình/, '寝取られ', '浮気', '不倫'],
+    [/quyến rũ|dụ dỗ|cám dỗ/, '誘惑', '小悪魔', '痴女'],
+    [/trưởng thành|người vợ|vợ/, '人妻', '熟女'],
+    [/diễn xuất tự nhiên|chân thực/, '自然な演技', 'ドラマ'],
+    [/hài hước|đời thường/, 'コメディ', '日常'],
+    [/oral|deep ?throat|cổ họng/, 'フェラ', '喉奥', 'ディープスロート']
+  ];
+  map.forEach(([re, ...w]) => { if (re.test(s) || moods.length) { if (w.some(x => s.includes(x)) || moods.length) terms.push(...w); } });
+  if (!terms.length) terms = ['作品', '女優', 'レビュー', 'あらすじ'];
+  if (actress) terms.push(actress); if (maker) terms.push(maker); terms = [...new Set(terms)];
+  const summaryEl = document.getElementById('summary'); summaryEl.replaceChildren();
+  const p = document.createElement('p'); p.textContent = 'Mood: ' + (moods.join(' · ') || 'Tự mô tả') + ' | Ưu tiên: ' + priority + (era ? ' | Thời kỳ: ' + era : ''); summaryEl.append(p);
+  const t = document.getElementById('terms'); t.replaceChildren();
+  terms.forEach(x => { const z = document.createElement('span'); z.className = 'tag'; z.textContent = x; t.append(z); });
+  const qbox = document.getElementById('queries'); qbox.replaceChildren();
+  const base = [...terms, brief, era, actress, maker].filter(Boolean).join(' ');
+  const searches = [
+    ['Google – truy vấn tổng hợp', base + ' JAV 作品'],
+    ['Google – tiêu đề và mô tả', base + ' 作品 あらすじ'],
+    ['Google – metadata và mã sản phẩm', base + ' 品番 女優 メーカー'],
+    ['Bing – tìm chéo', base + ' JAV'],
+    ['Catalog FANZA/DMM', 'site:video.dmm.co.jp ' + base],
+    ['Tìm nguồn thảo luận', base + ' site:reddit.com JAV']
+  ];
+  searches.forEach(([l, q]) => linkRow(qbox, l, q, 'https://www.google.com/search?q=' + enc(q)));
+  linkRow(qbox, 'Bing search', base, 'https://www.bing.com/search?q=' + enc(base));
+  promptText = `Hãy nghiên cứu metadata phim JAV theo yêu cầu sau.\nMô tả: ${brief}\nMood: ${moods.join(', ')}\nDiễn viên: ${actress || 'không giới hạn'}\nHãng/mã: ${maker || 'không giới hạn'}\nThời kỳ: ${era || 'không giới hạn'}\nƯu tiên: ${priority}\nTự mở rộng từ khóa tiếng Nhật và tìm nhiều nguồn. Trả bảng Mã phim | Tên | Diễn viên | Hãng | Năm | Đặc điểm khớp | Mức xác minh | Nguồn. Không bịa mã; phân biệt dữ kiện xác nhận và suy luận; loại trùng; mỗi yêu cầu là bộ tiêu chí độc lập.`;
+  document.getElementById('out').hidden = false;
+};
+async function copyText(value, message) {
+  try { await navigator.clipboard.writeText(value); alert(message); }
+  catch { alert('Trình duyệt không cấp quyền clipboard. Hãy thử mở trang bằng HTTPS hoặc localhost.'); }
+}
+document.getElementById('copyPrompt').onclick = () => copyText(promptText, 'Đã copy prompt.');
+document.getElementById('copyTerms').onclick = () => copyText([...document.querySelectorAll('#terms .tag')].map(x => x.textContent).join('、'), 'Đã copy từ khóa.');
+document.getElementById('reset').onclick = () => {
+  document.querySelectorAll('#brief,#actress,#maker').forEach(x => x.value = '');
+  document.querySelectorAll('select').forEach(x => x.selectedIndex = 0);
+  moodBtns.forEach(x => x.classList.remove('active'));
+  document.getElementById('out').hidden = true;
+};
+function parseUrls(raw) { return raw.split(/[\n,]+/).map(u => u.trim()).filter(u => /^https?:\/\//i.test(u)); }
+function makeShotBox(url, badgeText, portrait = false) {
+  const box = document.createElement('div'); box.className = 'shot-box' + (portrait ? ' portrait' : '');
+  const img = document.createElement('img'); img.src = url; img.alt = badgeText; img.loading = 'lazy'; img.referrerPolicy = 'no-referrer';
+  img.onerror = () => { img.remove(); const fb = document.createElement('div'); fb.className = 'img-fallback'; fb.textContent = badgeText + ': không tải được ảnh (kiểm tra link hoặc chặn hotlink)'; box.append(fb); };
+  const badge = document.createElement('span'); badge.className = 'shot-label'; badge.textContent = badgeText; box.append(img, badge); return box;
+}
+let items = [];
+document.getElementById('save').onclick = () => {
+  const candidate = document.getElementById('candidate').value.trim();
+  if (!candidate) return alert('Nhập mã phim hoặc tiêu đề trước.');
+  const actressImg = document.getElementById('actressImg').value.trim(), coverImg = document.getElementById('coverImg').value.trim();
+  const highlights = parseUrls(document.getElementById('highlightImgs').value), source = document.getElementById('source').value.trim();
+  items.push({ candidate, actressImg, coverImg, highlights, source });
+  document.getElementById('candidate').value = ''; document.getElementById('actressImg').value = '';
+  document.getElementById('coverImg').value = ''; document.getElementById('highlightImgs').value = ''; document.getElementById('source').value = ''; render();
+};
+function render() {
+  const s = document.getElementById('saved'); s.replaceChildren();
+  items.forEach((item, idx) => {
+    const wrap = document.createElement('div'); wrap.className = 'result';
+    const head = document.createElement('div'); head.className = 'card-head';
+    const titleBox = document.createElement('div'), title = document.createElement('div');
+    title.textContent = `${idx + 1}. ${item.candidate}`; title.style.fontWeight = 'bold';
+    const meta = document.createElement('div'); meta.className = 'small'; meta.textContent = item.source ? `Nguồn/ghi chú: ${item.source}` : 'Chưa ghi nguồn';
+    titleBox.append(title, meta);
+    const actions = document.createElement('div'); actions.className = 'card-actions';
+    const delBtn = document.createElement('button'); delBtn.type = 'button'; delBtn.className = 'ghost sm'; delBtn.textContent = 'Xóa';
+    delBtn.onclick = () => { items.splice(idx, 1); render(); }; actions.append(delBtn); head.append(titleBox, actions); wrap.append(head);
+    const hasActress = /^https?:\/\//i.test(item.actressImg), hasCover = /^https?:\/\//i.test(item.coverImg), hasShots = item.highlights.length > 0;
+    if (hasActress || hasCover || hasShots) {
+      const grid = document.createElement('div'); grid.className = 'media-grid';
+      const leftCol = document.createElement('div');
+      if (hasActress) leftCol.append(makeShotBox(item.actressImg, 'Diễn viên', true));
+      else { const emptyA = document.createElement('div'); emptyA.className = 'shot-box portrait'; const fb = document.createElement('div'); fb.className = 'img-fallback'; fb.textContent = 'Không có ảnh diễn viên'; emptyA.append(fb); leftCol.append(emptyA); }
+      const rightCol = document.createElement('div');
+      if (hasCover) rightCol.append(makeShotBox(item.coverImg, 'Ảnh bìa phim', false));
+      else { const emptyC = document.createElement('div'); emptyC.className = 'shot-box'; const fb = document.createElement('div'); fb.className = 'img-fallback'; fb.textContent = 'Không có ảnh bìa phim'; emptyC.append(fb); rightCol.append(emptyC); }
+      if (hasShots) { const strip = document.createElement('div'); strip.className = 'highlights-strip'; item.highlights.forEach((u, i) => strip.append(makeShotBox(u, `Highlight #${i + 1}`, false))); rightCol.append(strip); }
+      grid.append(leftCol, rightCol); wrap.append(grid);
+    }
+    s.append(wrap);
+  });
+}
+document.getElementById('export').onclick = () => {
+  const header = ['Ma phim/tieu de', 'Nguon', 'Anh dien vien', 'Anh bia', 'Highlight'];
+  const csvRows = items.map(r => [r.candidate, r.source, r.actressImg, r.coverImg, r.highlights.join(' | ')]);
+  const csv = [header, ...csvRows].map(row => row.map(x => '"' + String(x || '').replaceAll('"', '""') + '"').join(',')).join('\n');
+  const a = document.createElement('a'); const url = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }));
+  a.href = url; a.download = 'jav-candidates-visual.csv'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+</script>
+</body>
+</html>
