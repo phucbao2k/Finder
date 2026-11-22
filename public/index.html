@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0b1020">
+  <title>JAV Discovery Engine</title>
+  <link rel="stylesheet" href="./assets/style.css">
+</head>
+<body>
+<main class="shell">
+  <header class="hero">
+    <div class="eyebrow">PERSONAL METADATA RESEARCH · VISUAL EDITION</div>
+    <h1>🎬 JAV Discovery Engine</h1>
+    <p>Tìm metadata bằng mô tả tự do, mở rộng tag và đối chiếu ảnh / nguồn.</p>
+  </header>
+
+  <section class="panel">
+    <div class="section-heading"><span class="step">01</span><div><h2>Kết nối backend</h2><p>Backend Render dùng để truy vấn Google / SerpAPI.</p></div></div>
+    <label for="apiBase">Backend API URL</label>
+    <div class="input-row">
+      <input id="apiBase" type="url" placeholder="https://ten-backend.onrender.com">
+      <button id="saveApi" class="secondary">Kiểm tra & lưu</button>
+    </div>
+    <div id="status" class="status">Sẵn sàng.</div>
+  </section>
+
+  <section class="panel">
+    <div class="section-heading"><span class="step">02</span><div><h2>Bạn muốn tìm nội dung gì?</h2><p>Nhập từ khóa tự do bằng tiếng Việt, Anh hoặc Nhật. Không bị giới hạn bởi mood có sẵn.</p></div></div>
+    <label for="brief">Ý tưởng / từ khóa gốc</label>
+    <textarea id="brief" rows="3" placeholder="Ví dụ: toy + aphrodisiac, hoặc một mô tả tự nhiên về nội dung bạn muốn tìm..."></textarea>
+    <div class="actions">
+      <button id="analyze" class="primary">✦ Phân tích & mở rộng tag</button>
+      <button id="reset" class="secondary">Làm mới</button>
+    </div>
+
+    <div id="tagWorkspace" class="tag-workspace hidden">
+      <div class="tag-head">
+        <div><h3>Tag được đề xuất</h3><p>Chọn / bỏ chọn tag để quyết định từ khóa dùng khi tìm kiếm.</p></div>
+        <span id="tagCount" class="count-pill">0 đã chọn</span>
+      </div>
+      <div id="tagGroups" class="tag-groups"></div>
+      <div class="custom-tag-row">
+        <input id="customTag" placeholder="Tự thêm tag hoặc từ khóa tiếng Nhật...">
+        <button id="addTag" class="secondary">+ Thêm tag</button>
+      </div>
+      <div class="selected-row">
+        <strong>Tag đang chọn</strong>
+        <div id="selectedTags" class="tag-list"><span class="muted">Chưa chọn tag nào.</span></div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div><label for="actress">Diễn viên</label><input id="actress" placeholder="Tên diễn viên / tên Nhật"></div>
+      <div><label for="maker">Hãng / series / mã phim</label><input id="maker" placeholder="Tên hãng hoặc mã"></div>
+      <div><label for="era">Thời kỳ</label><select id="era"><option value="">Không giới hạn</option><option>2020–nay</option><option>2015–2019</option><option>2010–2014</option><option>2000–2009</option><option>Trước năm 2000</option></select></div>
+      <div><label for="priority">Ưu tiên</label><select id="priority"><option>Độ khớp cốt truyện và mood</option><option>Mã phim và metadata chính xác</option><option>Diễn viên</option><option>Hãng và series</option><option>Chủ đề / tag nội dung</option></select></div>
+    </div>
+    <div class="actions search-actions">
+      <button id="search" class="primary">🔎 Tìm metadata + hình ảnh</button>
+      <button id="copyPrompt" class="ghost">Copy prompt cho ChatGPT</button>
+    </div>
+    <div id="queryLinks" class="query-links"></div>
+  </section>
+
+  <section class="panel hidden" id="resultsPanel">
+    <div class="section-heading"><span class="step">03</span><div><h2>Kết quả tra cứu</h2><p>Đối chiếu mã phim, diễn viên và nguồn trước khi xác nhận.</p></div></div>
+    <div class="tabs">
+      <button class="tab active" type="button" data-tab="metadata">Metadata</button>
+      <button class="tab" type="button" data-tab="images">Hình ảnh & highlight</button>
+      <button class="tab" type="button" data-tab="saved">Ứng viên đã lưu <span id="savedTabCount">0</span></button>
+    </div>
+    <div id="metadataView" class="tab-view">
+      <div class="result-heading"><h3>Nguồn web / metadata</h3><span class="muted small">Lưu ứng viên để xuất CSV</span></div>
+      <div id="results" class="result-list"></div>
+    </div>
+    <div id="imagesView" class="tab-view hidden">
+      <h3>Hình ảnh tìm được</h3>
+      <p class="small muted">Ảnh từ nguồn bên ngoài. Có thể không thuộc đúng phim; hãy đối chiếu tiêu đề và nguồn.</p>
+      <div id="images" class="image-grid"></div>
+    </div>
+    <div id="savedView" class="tab-view hidden">
+      <div class="result-heading"><h3>Danh sách ứng viên</h3><button id="exportCsv" class="secondary">⇩ Xuất CSV</button></div>
+      <div id="savedResults" class="result-list"></div>
+    </div>
+  </section>
+
+  <footer class="footer">JAV Discovery Engine · Không lưu API key trong frontend · Metadata cần được xác minh từ nguồn gốc.</footer>
+</main>
+
+<div id="lightbox" class="lightbox hidden" role="dialog" aria-modal="true" aria-label="Xem ảnh lớn">
+  <button id="closeLightbox" class="lightbox-close" aria-label="Đóng">×</button>
+  <img id="lightboxImage" alt="Ảnh phóng to">
+  <div id="lightboxCaption" class="lightbox-caption"></div>
+  <a id="lightboxSource" target="_blank" rel="noopener noreferrer">Mở nguồn ảnh ↗</a>
+</div>
+<script src="./assets/app.js"></script>
+</body>
+</html>
