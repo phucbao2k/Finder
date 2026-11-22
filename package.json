@@ -1,0 +1,19 @@
+{
+  "name": "jav-discovery-engine",
+  "version": "2.0.0",
+  "private": true,
+  "description": "JAV metadata and visual discovery app",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  }
+}
