@@ -54,7 +54,8 @@
       <div><label for="actress">Diễn viên</label><input id="actress" placeholder="Tên diễn viên / tên Nhật"></div>
       <div><label for="maker">Hãng / series / mã phim</label><input id="maker" placeholder="Tên hãng hoặc mã"></div>
       <div><label for="era">Thời kỳ</label><select id="era"><option value="">Không giới hạn</option><option>2020–nay</option><option>2015–2019</option><option>2010–2014</option><option>2000–2009</option><option>Trước năm 2000</option></select></div>
-      <div><label for="priority">Ưu tiên</label><select id="priority"><option>Độ khớp cốt truyện và mood</option><option>Mã phim và metadata chính xác</option><option>Diễn viên</option><option>Hãng và series</option><option>Chủ đề / tag nội dung</option></select></div>
+      <div><label for="priority">Ưu tiên nội dung</label><select id="priority"><option>Độ khớp cốt truyện và mood</option><option>Mã phim và metadata chính xác</option><option>Diễn viên</option><option>Hãng và series</option><option>Chủ đề / tag nội dung</option></select></div>
+      <div><label for="sortMode">Thứ tự kết quả</label><select id="sortMode"><option value="relevance">Best Match · Khớp nhất</option><option value="newest">Newest · Mới nhất tìm được</option></select><p class="field-hint">Newest dùng thứ tự ngày của Google; không đồng nghĩa chắc chắn với ngày phát hành phim.</p></div>
     </div>
     <div class="actions search-actions">
       <button id="search" class="primary">🔎 Tìm metadata + hình ảnh</button>
@@ -68,6 +69,7 @@
     <div class="tabs">
       <button class="tab active" type="button" data-tab="metadata">Metadata</button>
       <button class="tab" type="button" data-tab="images">Hình ảnh & highlight</button>
+      <button class="tab" type="button" data-tab="related">Phim liên quan</button>
       <button class="tab" type="button" data-tab="saved">Ứng viên đã lưu <span id="savedTabCount">0</span></button>
     </div>
     <div id="metadataView" class="tab-view">
@@ -79,13 +81,19 @@
       <p class="small muted">Ảnh từ nguồn bên ngoài. Có thể không thuộc đúng phim; hãy đối chiếu tiêu đề và nguồn.</p>
       <div id="images" class="image-grid"></div>
     </div>
+    <div id="relatedView" class="tab-view hidden">
+      <h3>Khám phá phim liên quan</h3>
+      <p class="small muted">Chọn “Tìm phim tương tự” trên một kết quả. Finder sẽ mở rộng truy vấn từ tiêu đề / mã phim và metadata bạn đã nhập; đây là tìm kiếm mở rộng, không phải điểm similarity đã được xác minh.</p>
+      <div id="relatedQuery" class="query-links"></div>
+      <div id="relatedResults" class="result-list"></div>
+    </div>
     <div id="savedView" class="tab-view hidden">
       <div class="result-heading"><h3>Danh sách ứng viên</h3><button id="exportCsv" class="secondary">⇩ Xuất CSV</button></div>
       <div id="savedResults" class="result-list"></div>
     </div>
   </section>
 
-  <footer class="footer">JAV Discovery Engine · Không lưu API key trong frontend · Metadata cần được xác minh từ nguồn gốc.</footer>
+  <footer class="footer">JAV Discovery Engine 3.0 · Không lưu API key trong frontend · Kết quả tìm kiếm cần được xác minh tại nguồn.</footer>
 </main>
 
 <div id="lightbox" class="lightbox hidden" role="dialog" aria-modal="true" aria-label="Xem ảnh lớn">
