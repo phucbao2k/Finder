@@ -32,3 +32,17 @@ Mặc định frontend dùng `https://jav-discovery-engine-api.onrender.com`. N�
 - Ảnh lấy từ Google Images theo mã phim, độ chính xác tốt hơn truy vấn chung nhưng Google vẫn có thể trả ảnh sai hoặc ảnh trùng; đây không phải feed ảnh chính thức. Một số website có thể chặn hotlink khiến ảnh không hiển thị.
 - Mã phim được trích từ tiêu đề/snippet chỉ là gợi ý, chưa xác minh catalog. Diễn viên/hãng/điểm phù hợp chỉ hiển thị khi nguồn thực sự cung cấp; không tự bịa metadata.
 - Phân tích tag dùng bộ quy tắc cục bộ, chưa tích hợp AI.
+
+
+## JAV Finder 4.3 — Image Pipeline Optimization
+
+- Bỏ lượt Google Images tổng quát không gắn mã phim; ảnh được tìm theo từng mã phát hiện.
+- Truy vấn ảnh ưu tiên mã phim chính xác và loại trừ nhóm từ khóa sản phẩm toy/phụ kiện không liên quan.
+- Lọc ứng viên theo tiêu đề, nguồn, URL; loại sản phẩm toy rõ ràng và mã phim khác.
+- Chấm điểm ảnh theo mức độ khớp mã và tín hiệu DVD/sample/catalog.
+- Chỉ gọi truy vấn ảnh bổ sung khi lượt đầu có dưới 2 ảnh hợp lệ.
+- Cache ảnh theo mã phim ở trình duyệt tối đa 7 ngày (giới hạn 120 mã); backend cache kết quả Google Images 6 giờ.
+- Giữ tối đa 3 mã phim tìm ảnh đồng thời; ảnh trong gallery dùng lazy loading/async decoding.
+- Trang chi tiết ưu tiên thumbnail để giảm lỗi hotlink/403 khi hiển thị cover.
+
+Lưu ý: lọc dựa trên metadata văn bản mà Google Images cung cấp; không thể xác định tuyệt đối nội dung hình ảnh chỉ từ URL/title. Một số host vẫn có thể trả 403 cho trình duyệt. Ảnh gốc mở trong lightbox vẫn phụ thuộc quyền truy cập của host.
