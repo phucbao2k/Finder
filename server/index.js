@@ -22,8 +22,8 @@ async function serpSearch(params){
 }
 function normalizeWeb(data){return(data.organic_results||[]).slice(0,20).map(x=>({title:clean(x.title,300),snippet:clean(x.snippet,900),link:x.link||"",displayedLink:clean(x.displayed_link,200),date:clean(x.date,80),source:clean(x.source||x.displayed_link,120),thumbnail:x.thumbnail||""})).filter(x=>x.title&&x.link);}
 function normalizeImages(data){return(data.images_results||[]).slice(0,30).map(x=>({title:clean(x.title,300),thumbnail:x.thumbnail||x.original||"",original:x.original||"",source:clean(x.source,120),link:x.link||""})).filter(x=>x.thumbnail);}
-app.get("/api/health",(_req,res)=>res.json({ok:true,service:"JAV Finder API",provider:"SerpAPI",providerConfigured:Boolean(API_KEY),version:"4.1.0"}));
-app.get("/api/config",(_req,res)=>res.json({providerConfigured:Boolean(API_KEY),provider:"SerpAPI",version:"4.1.0",features:{webSearch:true,imageSearch:true,smartRefresh:"client-orchestrated-query-variants",ai:false}}));
+app.get("/api/health",(_req,res)=>res.json({ok:true,service:"JAV Finder API",provider:"SerpAPI",providerConfigured:Boolean(API_KEY),version:"4.2.0"}));
+app.get("/api/config",(_req,res)=>res.json({providerConfigured:Boolean(API_KEY),provider:"SerpAPI",version:"4.2.0",features:{webSearch:true,imageSearch:true,smartRefresh:"client-orchestrated-query-variants",ai:false}}));
 app.post("/api/search",async(req,res)=>{
  const query=clean(req.body?.query,500),mode=req.body?.mode==="images"?"images":"web",sort=req.body?.sort==="newest"&&mode==="web"?"newest":"relevance",start=Math.max(0,Math.min(90,Number.parseInt(req.body?.start,10)||0));
  if(!query)return res.status(400).json({error:"Vui lòng nhập mô tả hoặc từ khóa tìm kiếm."});
