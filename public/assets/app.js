@@ -2,7 +2,7 @@
 "use strict";
 const $ = id => document.getElementById(id);
 const DEFAULT_API = "https://jav-discovery-engine-api.onrender.com";
-const KEYS = {api:"jf4_api_base",saved:"jf4_saved",history:"jf4_history",recent:"jf4_recent"};
+const KEYS = {api:"jf4_api_base",saved:"jf4_saved",history:"jf4_history",recent:"jf4_recent",imageCache:"jf43_image_cache"};
 const read = (key, fallback=[]) => { try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); } catch { return fallback; } };
 const state = {
   apiBase:(localStorage.getItem(KEYS.api)||localStorage.getItem("jde_api_base")||DEFAULT_API).replace(/\/+$/,""),
@@ -78,7 +78,7 @@ function saveCandidate(r){
 function renderCounts(){$("historyCount").textContent=state.history.length;$("savedCount").textContent=state.saved.length;$("recentCount").textContent=state.recent.length;}
 function cardHtml(r){
  const code=extractCode(r);const gallery=Array.isArray(r.gallery)?r.gallery:[];
- const visual=gallery.length?`<div class="code-gallery"><div class="code-gallery-track">${gallery.map((im,i)=>`<button class="code-gallery-item" type="button" data-card-image="${escapeHtml(r.link||'')}" data-image-index="${i}" aria-label="Mở ảnh ${i+1}"><img src="${escapeHtml(im.thumbnail||im.original)}" loading="lazy" referrerpolicy="no-referrer" alt="${escapeHtml(im.title||code||'Ảnh preview')}" onerror="this.parentElement.remove()"></button>`).join('')}</div><div class="code-gallery-foot"><span>${gallery.length} ảnh · ${escapeHtml(code||'')}</span><span>Vuốt ngang ↔</span></div></div>`:(code?`<div class="card-visual code-gallery-empty"><span>${r.galleryLoaded?"CHƯA TÌM THẤY ẢNH":"ĐANG TÌM ẢNH THEO MÃ"}<br>${escapeHtml(code)}</span></div>`:(r.thumbnail?`<div class="card-visual"><img src="${escapeHtml(r.thumbnail)}" loading="lazy" referrerpolicy="no-referrer" alt="Ảnh từ nguồn" onerror="this.parentElement.innerHTML='<span>PREVIEW KHÔNG KHẢ DỤNG</span>'"></div>`:'<div class="card-visual"><span>CHƯA CÓ ẢNH PREVIEW</span></div>'));
+ const visual=gallery.length?`<div class="code-gallery"><div class="code-gallery-track">${gallery.map((im,i)=>`<button class="code-gallery-item" type="button" data-card-image="${escapeHtml(r.link||'')}" data-image-index="${i}" aria-label="Mở ảnh ${i+1}"><img src="${escapeHtml(im.thumbnail||im.original)}" loading="lazy" decoding="async" referrerpolicy="no-referrer" alt="${escapeHtml(im.title||code||'Ảnh preview')}" onerror="this.parentElement.remove()"></button>`).join('')}</div><div class="code-gallery-foot"><span>${gallery.length} ảnh · ${escapeHtml(code||'')}</span><span>Vuốt ngang ↔</span></div></div>`:(code?`<div class="card-visual code-gallery-empty"><span>${r.galleryLoaded?"CHƯA TÌM THẤY ẢNH":"ĐANG TÌM ẢNH THEO MÃ"}<br>${escapeHtml(code)}</span></div>`:(r.thumbnail?`<div class="card-visual"><img src="${escapeHtml(r.thumbnail)}" loading="lazy" referrerpolicy="no-referrer" alt="Ảnh từ nguồn" onerror="this.parentElement.innerHTML='<span>PREVIEW KHÔNG KHẢ DỤNG</span>'"></div>`:'<div class="card-visual"><span>CHƯA CÓ ẢNH PREVIEW</span></div>'));
  return `<article class="result-card">${visual}<div class="card-body"><div class="card-topline"><span class="source-label">${escapeHtml(r.source||"Nguồn web")}</span><span class="confidence-label">${code?"Mã phát hiện · chưa xác minh":"Chưa xác định mã"}</span></div><h3 class="movie-card-title">${escapeHtml(r.title||"Không có tiêu đề")}</h3><p class="movie-snippet">${escapeHtml(r.snippet||"Nguồn không cung cấp mô tả.")}</p><div class="movie-meta">${code?`<span class="meta-chip code-chip">${escapeHtml(code)}</span>`:""}<span class="meta-chip">${escapeHtml(r.date||"Năm chưa xác định")}</span><span class="meta-chip">${escapeHtml(r.source||"Nguồn chưa xác định")}</span></div><div class="movie-meta"><span class="meta-chip unknown">Diễn viên: chưa xác định</span><span class="meta-chip unknown">Hãng: chưa xác định</span><span class="meta-chip unknown">Điểm khớp: chưa tính</span></div><div class="card-actions"><a href="${escapeHtml(r.link||"#")}" target="_blank" rel="noopener noreferrer">Mở nguồn ↗</a><button data-detail="${escapeHtml(r.link||"")}">Chi tiết</button><button data-save="${escapeHtml(r.link||"")}">${state.saved.some(x=>x.link===r.link)?"✓ Đã lưu":"+ Lưu ứng viên"}</button><button data-related="${escapeHtml(r.link||"")}">Tìm tương tự</button></div></div></article>`;
 }
 function renderResults(){
@@ -95,15 +95,70 @@ function renderImages(images){
  state.images.slice(0,18).forEach(item=>{const card=document.createElement("div");card.className="image-card";const btn=document.createElement("button");btn.className="image-open";const img=document.createElement("img");img.src=item.thumbnail||item.original;img.alt=item.title||"Ảnh kết quả";img.loading="lazy";img.referrerPolicy="no-referrer";img.onerror=()=>{card.remove();};btn.append(img);btn.onclick=()=>showLightbox(item);const cap=document.createElement("div");cap.className="image-caption";cap.textContent=item.title||item.source||"Ảnh tham khảo";card.append(btn,cap);box.append(card);});
  if(!box.children.length)box.innerHTML='<div class="empty-state">Chưa có ảnh preview từ nguồn tìm kiếm.</div>';
 }
+const IMAGE_REJECT_TERMS = [
+ "大人のおもちゃ","アダルトグッズ","ラブグッズ","セックスグッズ","性具","玩具","おもちゃ",
+ "バイブレーター","バイブ","ローター","ディルド","ペニスバンド","コックリング","ラブドール",
+ "adult toy","sex toy","sex toys","vibrator","vibrators","dildo","dildos","love doll","love dolls",
+ "adult novelty","adult novelties","sex product","sex products","lingerie store","toy shop"
+];
+const IMAGE_FILM_TERMS = [
+ "dvd","ジャケット","サンプル","サンプル画像","作品","出演","女優","メーカー","品番",
+ "screenshot","sample","cover","movie","film","av"
+];
+function normalizedCode(value){return String(value||"").toUpperCase().replace(/[^A-Z0-9]/g,"");}
+function imageText(image){return `${image.title||""} ${image.source||""} ${image.link||""} ${image.original||""}`.toLowerCase();}
 function imageCodeConflict(code,image){
- const text=`${image.title||""} ${image.link||""}`;const found=text.match(/\b[A-Z]{2,8}[-_ ]?\d{2,6}\b/i);
- return Boolean(found&&found[0].toUpperCase().replace(/[^A-Z0-9]/g,"")!==code.toUpperCase().replace(/[^A-Z0-9]/g,""));
+ const text=`${image.title||""} ${image.link||""} ${image.original||""}`;
+ const found=[...text.matchAll(/\b[A-Z]{2,8}[-_ ]?\d{2,6}\b/gi)].map(m=>normalizedCode(m[0]));
+ return found.some(x=>x!==normalizedCode(code));
+}
+function imageIsRejectedProduct(image){
+ const t=imageText(image);
+ return IMAGE_REJECT_TERMS.some(term=>t.includes(term.toLowerCase()));
+}
+function imageRelevanceScore(code,image){
+ const title=String(image.title||"").toLowerCase();
+ const link=String(image.link||"").toLowerCase();
+ const source=String(image.source||"").toLowerCase();
+ const c=String(code||"").toLowerCase();
+ let score=0;
+ if(title.includes(c))score+=45;
+ if(link.includes(c))score+=25;
+ if(source.includes(c))score+=10;
+ if(IMAGE_FILM_TERMS.some(term=>title.includes(term)))score+=15;
+ if(/dvd|catalog|catalogue|video|javlibrary|fanza|dmm|javbus|javdatabase/i.test(`${source} ${link}`))score+=10;
+ if(imageIsRejectedProduct(image))score-=150;
+ return score;
 }
 function uniqueImages(images,code){
- const seen=new Set();return (images||[]).filter(im=>{
-  const src=im.thumbnail||im.original;if(!src||imageCodeConflict(code,im))return false;
+ const seen=new Set();
+ return (images||[]).filter(im=>{
+  const src=im.thumbnail||im.original;if(!src||imageCodeConflict(code,im)||imageIsRejectedProduct(im))return false;
   const key=String(im.original||src).split("?")[0];if(seen.has(key))return false;seen.add(key);return true;
- }).slice(0,12);
+ }).map(im=>({...im,_relevance:imageRelevanceScore(code,im)}))
+   .filter(im=>im._relevance>=0)
+   .sort((a,b)=>b._relevance-a._relevance)
+   .slice(0,12);
+}
+function readImageCache(){
+ try{return JSON.parse(localStorage.getItem(KEYS.imageCache)||"{}");}catch{return {};}
+}
+function writeImageCache(code,images){
+ const cache=readImageCache(),now=Date.now();
+ cache[code]={at:now,images:(images||[]).slice(0,12)};
+ const entries=Object.entries(cache).sort((a,b)=>(b[1]?.at||0)-(a[1]?.at||0)).slice(0,120);
+ try{localStorage.setItem(KEYS.imageCache,JSON.stringify(Object.fromEntries(entries)));}catch{}
+}
+function getCachedImages(code){
+ const entry=readImageCache()[code];
+ if(!entry||!Array.isArray(entry.images)||Date.now()-entry.at>7*24*60*60*1000)return null;
+ return entry.images;
+}
+function imageQueryForCode(code,variant=0){
+ const excluded='-おもちゃ -玩具 -バイブ -ローター -ディルド -性具 -アダルトグッズ -"adult toy" -vibrator -dildo -"sex toy"';
+ return variant===0
+  ? `"${code}" (ジャケット OR サンプル画像 OR DVD OR 作品) ${excluded}`
+  : `"${code}" (スチール OR 作品画像 OR sample) ${excluded}`;
 }
 async function enrichCodeGalleries(results){
  const targets=(results||[]).filter(r=>extractCode(r)&&!r.galleryLoaded);
@@ -113,8 +168,17 @@ async function enrichCodeGalleries(results){
   while(cursor<targets.length){
    const r=targets[cursor++],code=extractCode(r);r.galleryLoaded=true;
    try{
-    let d=await apiSearch(code,"images");let imgs=uniqueImages(d.images,code);
-    if(imgs.length<4){const extra=await apiSearch(`"${code}" サンプル画像 作品`,"images");imgs=uniqueImages([...imgs,...(extra.images||[])],code);}
+    let imgs=getCachedImages(code);
+    if(imgs===null){
+     const d=await apiSearch(imageQueryForCode(code,0),"images");
+     imgs=uniqueImages(d.images,code);
+     // Only spend a second image-search request when the first result set is nearly empty.
+     if(imgs.length<2){
+      const extra=await apiSearch(imageQueryForCode(code,1),"images");
+      imgs=uniqueImages([...imgs,...(extra.images||[])],code);
+     }
+     writeImageCache(code,imgs);
+    }
     r.gallery=imgs;
    }catch(e){r.gallery=[];r.galleryError=e.message;}
    renderResults();
@@ -131,16 +195,21 @@ async function runSearch(){
  if(state.searchBusy)return;const f=currentFilters();if(!f.brief&&!f.tags.length&&!f.actress&&!f.maker&&!f.mood){setStatus("Nhập mô tả, mã phim, diễn viên hoặc hãng trước.",true);return;}
  state.searchBusy=true;$("search").disabled=true;$("resultsPanel").classList.remove("hidden");state.results=[];state.seenCodes.clear();state.seenLinks.clear();state.originalFilters=f;state.refreshRound=0;
  state.baseQuery=buildQuery(f);state.lastPrompt=makePrompt(f);$("refreshStatus").textContent="Sẵn sàng tìm thêm sau lượt đầu.";
- $("results").innerHTML='<div class="empty-state">Đang truy vấn nguồn web...</div>';$("images").innerHTML='<div class="empty-state">Đang tìm ảnh...</div>';
- addHistory(state.baseQuery,f);setStatus("Đang tìm metadata và ảnh song song...");
+ $("results").innerHTML='<div class="empty-state">Đang truy vấn nguồn web...</div>';
+ $("images").innerHTML='<div class="empty-state">Ảnh được tìm riêng theo từng mã phim trong kết quả.</div>';
+ addHistory(state.baseQuery,f);setStatus("Đang tìm metadata; gallery sẽ được tải riêng theo từng mã phim...");
  try{
   const sort=$("sortMode").value;
-  const tasks=await Promise.allSettled([apiSearch(state.baseQuery,"web",sort),apiSearch(state.baseQuery+" ジャケット サンプル画像","images")]);
-  if(tasks[0].status==="fulfilled"){addResults(tasks[0].value.results||[]);}else{$("results").innerHTML=`<div class="empty-state">Lỗi nguồn web: ${escapeHtml(tasks[0].reason.message)}</div>`;}
-  if(tasks[1].status==="fulfilled"){renderImages(tasks[1].value.images||[]);}else renderImages([]);
-  if(tasks[0].status==="fulfilled")await enrichCodeGalleries(state.results);
-  if(tasks[0].status==="fulfilled"||tasks[1].status==="fulfilled")setStatus(`Hoàn tất. ${state.results.length} kết quả web, ${state.images.length} ảnh. Nguồn web chưa đồng nghĩa metadata đã xác minh.`);
-  else setStatus(`Tìm kiếm thất bại: ${tasks[0].reason.message}`,true);
+  const task=await apiSearch(state.baseQuery,"web",sort).then(value=>({status:"fulfilled",value}),reason=>({status:"rejected",reason}));
+  if(task.status==="fulfilled"){
+   addResults(task.value.results||[]);
+   // Results appear first; image galleries are enriched progressively afterwards.
+   await enrichCodeGalleries(state.results);
+   setStatus(`Hoàn tất. ${state.results.length} kết quả web; ảnh được lọc và tải theo mã phim. Nguồn web chưa đồng nghĩa metadata đã xác minh.`);
+  }else{
+   $("results").innerHTML=`<div class="empty-state">Lỗi nguồn web: ${escapeHtml(task.reason.message)}</div>`;
+   setStatus(`Tìm kiếm thất bại: ${task.reason.message}`,true);
+  }
  }finally{state.searchBusy=false;$("search").disabled=false;}
 }
 function refreshPlans(strategy,round){
@@ -214,13 +283,13 @@ async function openDetail(r){
  $("detailActor").onclick=()=>{closeDetail();$("refreshStrategy").value="actress";smartRefresh();};
  $("detailMaker").onclick=()=>{closeDetail();$("refreshStrategy").value="maker";smartRefresh();};
  try{let imgs=Array.isArray(r.gallery)?r.gallery:[];if(!r.galleryLoaded&&extractCode(r)){await enrichCodeGalleries([r]);imgs=r.gallery||[];}const gallery=$("detailGallery");gallery.replaceChildren();
-  if(imgs.length){const cover=document.createElement("img");cover.className="detail-cover";cover.src=imgs[0].original||imgs[0].thumbnail;cover.alt="Ảnh kết quả tìm kiếm";cover.referrerPolicy="no-referrer";$("detailContent").querySelector(".detail-cover").replaceWith(cover);
-   imgs.slice(0,8).forEach(im=>{const b=document.createElement("button"),img=document.createElement("img");img.src=im.thumbnail||im.original;img.alt=im.title||"Gallery";img.loading="lazy";b.append(img);b.onclick=()=>showLightbox(im);gallery.append(b);});
+  if(imgs.length){const cover=document.createElement("img");cover.className="detail-cover";cover.src=imgs[0].thumbnail||imgs[0].original;cover.alt="Ảnh kết quả tìm kiếm";cover.referrerPolicy="no-referrer";cover.loading="lazy";cover.decoding="async";cover.onerror=()=>{if(imgs[0].original&&cover.src!==imgs[0].original)cover.src=imgs[0].original;else cover.replaceWith(Object.assign(document.createElement("div"),{className:"detail-cover",textContent:"Ảnh nguồn không cho phép hiển thị"}));};$("detailContent").querySelector(".detail-cover").replaceWith(cover);
+   imgs.slice(0,8).forEach(im=>{const b=document.createElement("button"),img=document.createElement("img");img.src=im.thumbnail||im.original;img.alt=im.title||"Gallery";img.loading="lazy";img.decoding="async";img.referrerPolicy="no-referrer";img.onerror=()=>b.remove();b.append(img);b.onclick=()=>showLightbox(im);gallery.append(b);});
   }else gallery.innerHTML='<span class="muted">Không có ảnh preview từ nguồn.</span>';
  }catch(e){const g=$("detailGallery");if(g)g.textContent="Không tải được gallery: "+e.message;}
 }
 function closeDetail(){$("detailModal").classList.add("hidden");}
-function showLightbox(item){$("lightboxImage").src=item.original||item.thumbnail||"";$("lightboxCaption").textContent=item.title||item.source||"";$("lightboxSource").href=item.link||item.original||"#";$("lightbox").classList.remove("hidden");}
+function showLightbox(item){const img=$("lightboxImage");img.onerror=()=>{if(item.thumbnail&&img.src!==item.thumbnail)img.src=item.thumbnail;};img.src=item.original||item.thumbnail||"";$("lightboxCaption").textContent=item.title||item.source||"";$("lightboxSource").href=item.link||item.original||"#";$("lightbox").classList.remove("hidden");}
 function closeLightbox(){$("lightbox").classList.add("hidden");$("lightboxImage").src="";}
 function exportCsv(){
  if(!state.saved.length){setStatus("Chưa có ứng viên để xuất CSV.",true);return;}
