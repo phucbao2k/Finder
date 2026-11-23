@@ -7,7 +7,7 @@ const read = (key, fallback=[]) => { try { return JSON.parse(localStorage.getIte
 const state = {
   apiBase:(localStorage.getItem(KEYS.api)||localStorage.getItem("jde_api_base")||DEFAULT_API).replace(/\/+$/,""),
   tags:[], selected:new Set(), results:[], images:[], seenCodes:new Set(), seenLinks:new Set(),
-  baseQuery:"", originalFilters:null, refreshBusy:false, searchBusy:false, layout:"visual",
+  baseQuery:"", originalFilters:null, refreshBusy:false, searchBusy:false, refreshRound:0, layout:"visual",
   saved:read(KEYS.saved,read("jde_saved_candidates",[])), history:read(KEYS.history,[]), recent:read(KEYS.recent,[]),
   currentDetail:null, lastPrompt:""
 };
@@ -31,7 +31,7 @@ async function requestJson(url,options={},timeout=95000){
  }catch(e){if(e.name==="AbortError")throw new Error("Quá thời gian chờ. Render có thể đang khởi động.");if(e instanceof TypeError)throw new Error("Không kết nối được backend. Kiểm tra URL / mạng / CORS.");throw e;}
  finally{clearTimeout(t);}
 }
-async function apiSearch(query,mode="web",sort="relevance"){return requestJson(apiUrl("/api/search"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query,mode,sort})});}
+async function apiSearch(query,mode="web",sort="relevance",start=0){return requestJson(apiUrl("/api/search"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query,mode,sort,start})});}
 function extractCode(result){
  const text=`${result.title||""} ${result.snippet||""} ${result.link||""}`;
  const m=text.match(/\b[A-Z]{2,8}[-_ ]?\d{2,6}\b/i);
@@ -93,6 +93,32 @@ function renderImages(images){
  state.images.slice(0,18).forEach(item=>{const card=document.createElement("div");card.className="image-card";const btn=document.createElement("button");btn.className="image-open";const img=document.createElement("img");img.src=item.thumbnail||item.original;img.alt=item.title||"Ảnh kết quả";img.loading="lazy";img.referrerPolicy="no-referrer";img.onerror=()=>{card.remove();};btn.append(img);btn.onclick=()=>showLightbox(item);const cap=document.createElement("div");cap.className="image-caption";cap.textContent=item.title||item.source||"Ảnh tham khảo";card.append(btn,cap);box.append(card);});
  if(!box.children.length)box.innerHTML='<div class="empty-state">Chưa có ảnh preview từ nguồn tìm kiếm.</div>';
 }
+function imageMatchScore(result,image){
+ const code=extractCode(result),hay=norm(`${image.title||""} ${image.link||""}`);
+ if(code&&hay.replace(/[^a-z0-9]/g,"").includes(code.toLowerCase().replace(/[^a-z0-9]/g,"")))return 100;
+ const words=norm(result.title||"").split(/[^a-z0-9]+/).filter(w=>w.length>3);
+ if(!words.length)return 0;
+ return words.filter(w=>hay.includes(w)).length/Math.min(words.length,8)*50;
+}
+function attachPreviews(images){
+ const usable=(images||[]).filter(x=>x.thumbnail||x.original);
+ state.results.forEach(r=>{
+  if(r.thumbnail)return;
+  const ranked=usable.map(im=>({im,score:imageMatchScore(r,im)})).sort((a,b)=>b.score-a.score);
+  if(ranked[0]&&ranked[0].score>=25){r.thumbnail=ranked[0].im.thumbnail||ranked[0].im.original;r.previewSource=ranked[0].im.source||"Google Images";}
+ });
+ renderResults();
+}
+async function enrichPreviewsByCode(results){
+ const targets=(results||[]).filter(r=>!r.thumbnail&&extractCode(r)).slice(0,8);
+ if(!targets.length)return;
+ await Promise.allSettled(targets.map(async r=>{
+  const code=extractCode(r);const d=await apiSearch(`${code} ジャケット DVD`,"images");
+  const candidate=(d.images||[]).find(im=>norm(`${im.title||""} ${im.link||""}`).replace(/[^a-z0-9]/g,"").includes(code.toLowerCase().replace(/[^a-z0-9]/g,""))) || (d.images||[])[0];
+  if(candidate)r.thumbnail=candidate.thumbnail||candidate.original;
+ }));
+ renderResults();
+}
 function addResults(incoming){
  let duplicates=0,added=0;
  for(const r of incoming||[]){const key=identity(r);if(!r.link||state.seenCodes.has(key)){duplicates++;continue;}state.seenCodes.add(key);state.seenLinks.add(r.link);state.results.push(r);added++;}
@@ -100,7 +126,7 @@ function addResults(incoming){
 }
 async function runSearch(){
  if(state.searchBusy)return;const f=currentFilters();if(!f.brief&&!f.tags.length&&!f.actress&&!f.maker&&!f.mood){setStatus("Nhập mô tả, mã phim, diễn viên hoặc hãng trước.",true);return;}
- state.searchBusy=true;$("search").disabled=true;$("resultsPanel").classList.remove("hidden");state.results=[];state.seenCodes.clear();state.seenLinks.clear();state.originalFilters=f;
+ state.searchBusy=true;$("search").disabled=true;$("resultsPanel").classList.remove("hidden");state.results=[];state.seenCodes.clear();state.seenLinks.clear();state.originalFilters=f;state.refreshRound=0;
  state.baseQuery=buildQuery(f);state.lastPrompt=makePrompt(f);$("refreshStatus").textContent="Sẵn sàng tìm thêm sau lượt đầu.";
  $("results").innerHTML='<div class="empty-state">Đang truy vấn nguồn web...</div>';$("images").innerHTML='<div class="empty-state">Đang tìm ảnh...</div>';
  addHistory(state.baseQuery,f);setStatus("Đang tìm metadata và ảnh song song...");
@@ -108,32 +134,65 @@ async function runSearch(){
   const sort=$("sortMode").value;
   const tasks=await Promise.allSettled([apiSearch(state.baseQuery,"web",sort),apiSearch(state.baseQuery+" ジャケット サンプル画像","images")]);
   if(tasks[0].status==="fulfilled"){addResults(tasks[0].value.results||[]);}else{$("results").innerHTML=`<div class="empty-state">Lỗi nguồn web: ${escapeHtml(tasks[0].reason.message)}</div>`;}
-  if(tasks[1].status==="fulfilled")renderImages(tasks[1].value.images||[]);else renderImages([]);
+  if(tasks[1].status==="fulfilled"){renderImages(tasks[1].value.images||[]);attachPreviews(tasks[1].value.images||[]);}else renderImages([]);
+  if(tasks[0].status==="fulfilled")await enrichPreviewsByCode(state.results);
   if(tasks[0].status==="fulfilled"||tasks[1].status==="fulfilled")setStatus(`Hoàn tất. ${state.results.length} kết quả web, ${state.images.length} ảnh. Nguồn web chưa đồng nghĩa metadata đã xác minh.`);
   else setStatus(`Tìm kiếm thất bại: ${tasks[0].reason.message}`,true);
  }finally{state.searchBusy=false;$("search").disabled=false;}
 }
-function refreshQuery(strategy){
- const f=state.originalFilters||currentFilters();const base=state.baseQuery;
- const extras={
- expanded:["作品名 品番 出演者","JAV DVD title actress studio","AV作品 データベース"],
- source:["site:javlibrary.com","site:dmm.co.jp/mono/dvd","site:av-wiki.net"],
- actress:[f.actress||"女優", "出演作品 女優名 作品一覧"],
- maker:[f.maker||"メーカー","メーカー公式 作品一覧 品番"],
- mood:[f.mood||f.brief||"シチュエーション","類似作品 同ジャンル 作品"]
- }[strategy]||["作品 品番"];
- let q=base+" "+extras.filter(Boolean).join(" ");if(strategy==="actress"&&!f.actress)q=base+" 女優 出演作品";
- if(strategy==="maker"&&!f.maker)q=base+" メーカー シリーズ";
- if(strategy==="mood")q=base+" 類似作品 同じジャンル";
- return q.slice(0,480);
+function refreshPlans(strategy,round){
+ const f=state.originalFilters||currentFilters();
+ const base=state.baseQuery;
+ const offset=Math.min(90,round*10);
+ const actress=f.actress||f.brief;
+ const maker=f.maker||f.brief;
+ const mood=f.mood||f.brief;
+ const plans={
+  expanded:[
+   {query:base,start:Math.min(90,(round+1)*10)},
+   {query:`${base} 品番 作品名 出演者 JAV DVD title actress studio`,start:offset}
+  ],
+  source:[
+   {query:`${base} site:javlibrary.com`,start:offset},
+   {query:`${base} site:av-wiki.net OR site:xxx-av.com`,start:offset}
+  ],
+  actress:[
+   {query:`${base} ${actress} 女優 出演作品 作品一覧 品番`,start:offset},
+   {query:`${base} ${actress} JAV actress filmography DVD`,start:offset}
+  ],
+  maker:[
+   {query:`${base} ${maker} メーカー 作品一覧 品番 DVD`,start:offset},
+   {query:`${base} ${maker} studio JAV titles catalog`,start:offset}
+  ],
+  mood:[
+   {query:`${base} ${mood} 類似作品 同ジャンル シチュエーション JAV`,start:offset},
+   {query:`${base} ${mood} similar JAV themes scenario`,start:offset}
+  ]
+ };
+ return (plans[strategy]||plans.expanded).map(x=>({...x,query:x.query.slice(0,480)}));
 }
 async function smartRefresh(){
- if(state.refreshBusy||!state.baseQuery)return;state.refreshBusy=true;$("refresh").disabled=true;
- const strategy=$("refreshStrategy").value,query=refreshQuery(strategy);$("refreshStatus").textContent="Đang tìm theo chiến lược mới…";setStatus("Smart Refresh đang truy vấn nguồn web...");
+ if(state.refreshBusy||!state.baseQuery)return;
+ state.refreshBusy=true;$("refresh").disabled=true;
+ const strategy=$("refreshStrategy").value,round=state.refreshRound;
+ const plans=refreshPlans(strategy,round);
+ $("refreshStatus").textContent=`Đang mở rộng lượt ${round+1}: ${strategy}…`;
+ setStatus("Smart Refresh đang lấy các trang kết quả tiếp theo và truy vấn biến thể...");
  try{
-  const data=await apiSearch(query,"web",$("sortMode").value);const before=state.results.length;const stats=addResults(data.results||[]);
-  if(stats.added){$("refreshStatus").textContent=`Tìm thấy ${stats.added} kết quả mới · loại ${stats.duplicates} kết quả trùng · tổng ${state.results.length}.`;setStatus("Smart Refresh hoàn tất: đã bổ sung kết quả mới.");}
-  else{$("refreshStatus").textContent=`Không có kết quả mới. Đã loại ${stats.duplicates} kết quả trùng; tổng vẫn ${before}.`;setStatus("Nguồn không trả về kết quả mới khác biệt.",true);}
+  const responses=await Promise.allSettled(plans.map(p=>apiSearch(p.query,"web",$("sortMode").value,p.start)));
+  const successful=responses.filter(x=>x.status==="fulfilled");
+  if(!successful.length)throw responses[0].reason||new Error("Tất cả truy vấn mở rộng đều thất bại.");
+  const before=state.results.length;
+  const incoming=successful.flatMap(x=>x.value.results||[]);
+  const stats=addResults(incoming);
+  state.refreshRound++;
+  if(stats.added){
+   $("refreshStatus").textContent=`Lượt ${state.refreshRound}: thêm ${stats.added} kết quả mới · bỏ ${stats.duplicates} kết quả trùng · tổng ${state.results.length}.`;
+   setStatus(`Smart Refresh đã bổ sung ${stats.added} kết quả mới.`);
+  }else{
+   $("refreshStatus").textContent=`Lượt ${state.refreshRound}: chưa có kết quả mới · ${stats.duplicates} mục trùng · tổng ${before}. Thử chiến lược khác hoặc lượt tiếp theo.`;
+   setStatus("Hai truy vấn mở rộng không trả về kết quả mới khác biệt.",true);
+  }
  }catch(e){$("refreshStatus").textContent="Lỗi nguồn tìm kiếm: "+e.message;setStatus("Smart Refresh thất bại: "+e.message,true);}
  finally{state.refreshBusy=false;$("refresh").disabled=false;}
 }
